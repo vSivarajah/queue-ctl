@@ -1,0 +1,8 @@
+
+spec:
+  topic_name: "vigii"
+  partitions_count: 3
+  replication_factor: 2
+  configs:
+    cleanup.policy: delete
+    max.message.bytes: 5542880
