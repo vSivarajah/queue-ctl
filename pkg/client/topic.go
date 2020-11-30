@@ -1,11 +1,7 @@
 package client
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
 )
 
 type PostTopicRequest struct {
@@ -21,64 +17,56 @@ type ConfigEntry struct {
 }
 
 type GetTopicResponse struct {
-	Name       string            `json:"name"`
-	Config     map[string]string `json:"configs"`
-	Partitions []Partition       `json:"partitions"`
+	Kind                   string                 `json:"kind"`
+	Metadata               Metadata               `json:"metadata"`
+	ClusterID              string                 `json:"cluster_id"`
+	TopicName              string                 `json:"topic_name"`
+	IsInternal             bool                   `json:"is_internal"`
+	ReplicationFactor      int                    `json:"replication_factor"`
+	Partitions             Partitions             `json:"partitions"`
+	Configs                Configs                `json:"configs"`
+	PartitionReassignments PartitionReassignments `json:"partition_reassignments"`
 }
 
-type Partition struct {
-	Partition int        `json:"partition"`
-	Leader    int        `json:"leader"`
-	Replicas  []Replicas `json:"replicas"`
+type Metadata struct {
+	Self         string `json:"self"`
+	ResourceName string `json:"resource_name"`
 }
 
-type Replicas struct {
-	Broker int  `json:"broker"`
-	Leader bool `json:"leader"`
-	InSync bool `json:"in_sync"`
+type Partitions struct {
+	Related string `json:"related"`
 }
 
-func (c *Client) GetTopicConfig(topicName string) (*GetTopicResponse, error) {
-	url := fmt.Sprintf(c.Host+"%s/topics/%s", c.ClusterId, topicName)
+type Configs struct {
+	Related string `json:"related"`
+}
 
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
+type PartitionReassignments struct {
+	Related string `json:"related"`
+}
+
+var client, err = NewClient()
+
+func GetTopicConfig(topicName string) (*GetTopicResponse, error) {
+
+	path := fmt.Sprintf("/topics/%s", topicName)
 	var topic GetTopicResponse
 
-	err = decoder.Decode(&topic)
-	if err != nil {
-		fmt.Println(err)
+	if err := client.Get(path, &topic); err != nil {
+		fmt.Printf("Error: %q\n", err)
+		return nil, err
 	}
-	fmt.Println("URL:", url)
-
+	fmt.Println(topic)
 	return &topic, nil
 }
 
-func (c *Client) CreateTopic() {
-	url := fmt.Sprintf(baseURL+"%s/topics/", c.ClusterId)
+func CreateTopic(requestBody PostTopicRequest) error {
+	url := fmt.Sprintf("/topics/")
+	if err := client.Post(url, requestBody, nil); err != nil {
+		fmt.Printf("Error: %q\n", err)
+		return err
+	}
 
-	requestBody := PostTopicRequest{
-		TopicName:         "test-topic",
-		PartitionsCount:   4,
-		ReplicationFactor: 1,
-		ConfigEntries: []ConfigEntry{
-			ConfigEntry{
-				Name:  "compression.type",
-				Value: "producer",
-			},
-		},
-	}
-	json, err := json.Marshal(requestBody)
-	if err != nil {
-		log.Println(err)
-	}
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(json))
-	if err != nil {
-		log.Println(err)
-		fmt.Println(resp.Status)
-	}
+	fmt.Println(fmt.Sprintf("Created topic %s with following configuration %#v", requestBody.TopicName, requestBody))
+	return nil
 }

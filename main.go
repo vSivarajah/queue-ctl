@@ -5,14 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/vsivarajah/queue-ctl/pkg/client"
 	"github.com/vsivarajah/queue-ctl/pkg/config"
 )
-
-type conf struct {
-	Hits     int64 `yaml:"hits" json:"hits,omitempty"`
-	Time     int64 `yaml:"time" json:"time,omitempty"`
-	Deadline int64 `yaml:"deadline,omitempty"`
-}
 
 func main() {
 
@@ -24,13 +19,28 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	mapConfig := []config.ConfigEntry{}
+	mapConfig := []client.ConfigEntry{}
 	for k, v := range topicConfig.Spec.ConfigEntries {
-		mapConfig = append(mapConfig, config.ConfigEntry{
+		mapConfig = append(mapConfig, client.ConfigEntry{
 			Name:  k,
 			Value: v,
 		})
 	}
 
-	fmt.Println(mapConfig[0].Name)
+	requestBody := client.PostTopicRequest{
+		TopicName:         topicConfig.Spec.TopicName,
+		PartitionsCount:   topicConfig.Spec.PartitionsCount,
+		ReplicationFactor: topicConfig.Spec.ReplicationFactor,
+		ConfigEntries:     mapConfig,
+	}
+	client.CreateTopic(requestBody)
+
+	topic, err := client.GetTopicConfig("luuulia")
+	if err != nil {
+
+		log.Println("Error:", err)
+
+	}
+	fmt.Println(topic.TopicName)
+
 }
